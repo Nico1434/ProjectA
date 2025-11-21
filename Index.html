@@ -1,32 +1,234 @@
-<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>產品清單篩選</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background: #e0f2fe; /* 柔和淺藍底色突顯 */
+      color: #333;
+    }
+
+    header {
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: #1f2937;
+    }
+    #healthStatus {
+      margin-top: 5px;
+      font-size: 0.9rem;
+      color: #4b5563;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    /* 篩選區 */
+    #filterBox {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      margin-bottom: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+    #filterBox label {
+      font-weight: 500;
+      margin-right: 6px;
+    }
+    #filterBox input, #filterBox select {
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 120px;
+      transition: 0.2s;
+    }
+    #filterBox input:focus, #filterBox select:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+    #filterBox button {
+      display: none; /* 不需要按鈕，改成即時篩選 */
+    }
+
+    /* 產品列表 */
+    #products {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .product {
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .product:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .product h3 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+      color: #111827;
+    }
+    .product p {
+      margin: 0;
+      font-weight: 500;
+      color: #3b82f6;
+    }
+
+    /* 錯誤訊息 / 無產品提示 */
+    .error, #products p {
+      grid-column: 1 / -1;
+      color: red;
+      text-align: center;
+      font-weight: 500;
+      padding: 20px;
+    }
+
+    /* RWD */
+    @media(max-width: 768px){
+      #filterBox {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      #filterBox input, #filterBox select {
+        width: 100%;
+      }
+      #products {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      }
+    }
+    @media(max-width: 480px){
+      header h1 {
+        font-size: 1.4rem;
+      }
+      #filterBox {
+        padding: 16px;
+      }
+      .product {
+        padding: 12px;
+      }
+    }
+  </style>
 </head>
-  <body>
-    <h1>六角學院-GitHub作業
-    <p>在這堂課程上面,你可以使用CSS設定用在HTML標籤上,以及使用設定<a href="#">連結顏色</a></p>
-    <h2>這章節你認識的CSS文字設定語法</h2>
-    <ol>
-    <li>文字顏色:color</li>
-    <li>文字大小:font-size</li>
-    <li>文字行距:font-height</li>
-    <li>文字字型:font-family</li>
-    <li>其他....</li>
-    </ol>
-    <h2>下列的emmt語法那一項錯的</h2>
-    <ul>
-    <li>!=HTML5 環境</li>
-    <li>link:src = 匯入 CSS</li>
-    <li>p*4=顯示4個段落</li>
-    <li>h1=對於展開h1開頭與結尾的標籤</li>
-    <li class="pp"> lorem = 自動就幫我們寫完網頁</li>
-    </ul>
-    <h2>在圖片加上logo線條</h2>
-    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqg2TVh42iIdlQgboqqPSiUt9WhXKAgyEujzgm0bhyrujg-zwFW8trTHo&s"></img>
-  </body>
+
+<body>
+  <header>
+    <h1>🛒 系統狀態 & 產品清單</h1>
+    <div id="healthStatus">
+      <strong>系統健康狀態：</strong><span id="statusText">讀取中…</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- 價格篩選 + 排序 -->
+    <div id="filterBox">
+      <label>最低價：</label>
+      <input type="number" id="minPrice" placeholder="例：1000">
+
+      <label>最高價：</label>
+      <input type="number" id="maxPrice" placeholder="例：5000">
+
+      <label>排序：</label>
+      <select id="sortSelect">
+        <option value="">不排序</option>
+        <option value="asc">價格低 → 高</option>
+        <option value="desc">價格高 → 低</option>
+      </select>
+    </div>
+
+    <!-- 產品清單 -->
+    <div id="productsContainer">
+      <h2>產品清單</h2>
+      <div id="products"></div>
+    </div>
+  </main>
+
+  <script>
+    const apiProducts = "https://jringyou.zeabur.app/api/products";
+    const apiHealth = "https://jringyou.zeabur.app/api/health";
+
+    const list = document.getElementById("products");
+
+    // 健康檢查
+    fetch(apiHealth)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("statusText").textContent =
+          data.status + "（" + data.timestamp + "）";
+      })
+      .catch(() => {
+        document.getElementById("statusText").textContent = "讀取失敗";
+      });
+
+    // 讀取產品
+    async function loadProducts() {
+      const min = document.getElementById("minPrice").value;
+      const max = document.getElementById("maxPrice").value;
+      const sort = document.getElementById("sortSelect").value;
+
+      const params = new URLSearchParams();
+      if (min) params.append("min", min);
+      if (max) params.append("max", max);
+
+      let url = apiProducts;
+      if (params.toString()) url += "?" + params.toString();
+
+      try {
+        const res = await fetch(url);
+        let products = await res.json();
+
+        if (!Array.isArray(products.matchedProducts) || products.matchedProducts.length === 0) {
+          list.innerHTML = "<p>沒有符合條件的產品。</p>";
+          return;
+        }
+
+        // 排序
+        if (sort === "asc") products.matchedProducts.sort((a,b)=>a.price-b.price);
+        else if (sort === "desc") products.matchedProducts.sort((a,b)=>b.price-a.price);
+
+        list.innerHTML = "";
+        products.matchedProducts.forEach(p => {
+          const item = document.createElement("div");
+          item.className = "product";
+          item.innerHTML = `
+            <h3>${p.name}</h3>
+            <p>NT$ ${p.price.toLocaleString()}</p>
+          `;
+          list.appendChild(item);
+        });
+      } catch {
+        list.innerHTML = "<p class='error'>讀取產品失敗。</p>";
+      }
+    }
+
+    // 即時篩選 & 排序
+    ["minPrice","maxPrice","sortSelect"].forEach(id=>{
+      document.getElementById(id).addEventListener("input", loadProducts);
+      document.getElementById(id).addEventListener("change", loadProducts);
+    });
+
+    // 初始化
+    loadProducts();
+  </script>
+</body>
 </html>
